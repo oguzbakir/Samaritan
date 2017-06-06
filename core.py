@@ -7,6 +7,27 @@ from slackclient import SlackClient
 import requests
 import re
 import random
+
+import os
+from bs4 import BeautifulSoup
+from urllib.request import urlopen
+
+import json
+import requests
+
+apiKey = open("keys.config","r").readline().lstrip("api_key=").strip()
+
+GOOGLE_URL_SHORTEN_API = apiKey
+
+def google_url_shorten(url):
+   req_url = 'https://www.googleapis.com/urlshortener/v1/url?key=' + GOOGLE_URL_SHORTEN_API
+   payload = {'longUrl': url}
+   headers = {'content-type': 'application/json'}
+   r = requests.post(req_url, data=json.dumps(payload), headers=headers)
+   resp = json.loads(r.text)
+   print(resp)
+   return resp["id"]
+
 def videoanalyze(link):
   #<div class="watch-view-count">721,494 views</div>
   page = requests.get(link)
@@ -17,6 +38,18 @@ def videoanalyze(link):
   views=views.split()[0]
   textmessage="Bu videonun "+views+" izlenmesi var."
   return textmessage
+def downloadVideo(link):
+  print("Downloading youtube mp3")
+  soup = BeautifulSoup(urlopen(link), "lxml")
+  musicName = soup.title.string.strip(" - YouTube")
+  os.system("youtube-dl -x --audio-format mp3 --prefer-ffmpeg "+str(link))
+  for filename in os.listdir("."):
+    if filename.startswith(musicName):
+      os.rename(filename, musicName+".mp3")
+  os.system("mv *.mp* youtubeDL/")
+  print(link)
+  longLink = "http://128.199.59.162/youtubeDL/"+musicName+".mp3"
+  return google_url_shorten(longLink)
 
 
 def finduserbyid(id):
@@ -30,6 +63,7 @@ def findchannelbyid(id):
         if(channel["id"]==str(id)):
           return channel["name"]
 def analyze(data):
+
   if(data["type"]=="message"):
     if("samaritan" in data["text"].lower()):
       if(finduserbyid(data["user"])!="samaritan"):
@@ -55,6 +89,7 @@ def analyze(data):
     elif("youtube.com/watch" in data["text"]):
       textmessage=videoanalyze(data["text"].lstrip("<").rstrip(">"))
       sc.rtm_send_message(data["channel"],textmessage)
+      sc.rtm_send_message(data["channel"],downloadVideo(data["text"].lstrip("<").rstrip(">")))
 
 
 def listen():
