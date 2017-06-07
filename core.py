@@ -29,7 +29,6 @@ def google_url_shorten(url):
    return resp["id"]
 
 def videoanalyze(link):
-  #<div class="watch-view-count">721,494 views</div>
   page = requests.get(link)
   pagefile=open("page.txt","w")
   print(page.text,file=pagefile)
