@@ -15,9 +15,11 @@ from urllib.request import urlopen
 import json
 import requests
 
-apiKey = open("keys.config","r").readline().lstrip("api_key=").strip()
+from pyshorteners import Shortener
 
-GOOGLE_URL_SHORTEN_API = apiKey
+apiKeyFile = open("keys.config","r")
+
+GOOGLE_URL_SHORTEN_API = apiKeyFile.readline().lstrip("api_key=").strip()
 
 def google_url_shorten(url):
    req_url = 'https://www.googleapis.com/urlshortener/v1/url?key=' + GOOGLE_URL_SHORTEN_API
@@ -27,6 +29,12 @@ def google_url_shorten(url):
    resp = json.loads(r.text)
    print(resp)
    return resp["id"]
+
+def bitly_url_shorten(url):
+  access_token = apiKeyFile.readline().lstrip("bit.ly_api_key=").strip()
+  shortener = Shortener('Bitly', bitly_token=access_token)
+  print(url)
+  return shortener.short(url)
 
 def videoanalyze(link):
   #<div class="watch-view-count">721,494 views</div>
@@ -40,16 +48,17 @@ def videoanalyze(link):
   return textmessage
 def downloadVideo(link):
   print("Downloading youtube mp3")
-  soup = BeautifulSoup(urlopen(link), "lxml")
+  #request = requests.get(link)
+  soup = BeautifulSoup(urlopen(link), "html.parser")
   musicName = soup.title.string.strip(" - YouTube")
   os.system("youtube-dl -x --audio-format mp3 --prefer-ffmpeg "+str(link))
   for filename in os.listdir("."):
     if filename.startswith(musicName):
       os.rename(filename, musicName+".mp3")
   os.system("mv *.mp* youtubeDL/")
-  print(link)
   longLink = "http://128.199.59.162/youtubeDL/"+musicName+".mp3"
-  return google_url_shorten(longLink)
+  print(longLink)
+  return longLink.replace(" ","%20")
 
 
 def finduserbyid(id):
@@ -96,7 +105,6 @@ def listen():
   if sc.rtm_connect():
       while True:
           data=sc.rtm_read()
-          print(data)
           if(data!=[]):
             _thread.start_new_thread(analyze,(data[0],))
           time.sleep(1)
